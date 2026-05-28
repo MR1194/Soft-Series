@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR — Projects</title>
+<meta name="description" content="A portfolio of projects by MR.">
+<meta property="og:title" content="MR — Projects">
+<meta property="og:description" content="A portfolio of projects by MR.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #11111a;
+    --fg: #f4f4f8;
+    --muted: #7a7a8c;
+    --accent: #ff2d6f;
+    --accent-2: #00e5ff;
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(255,45,111,0.12), transparent 60%),
+      radial-gradient(1000px 500px at -10% 30%, rgba(0,229,255,0.08), transparent 60%),
+      var(--bg);
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+  header {
+    padding: 80px 32px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    color: var(--accent-2);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    font-weight: 600;
+  }
+  h1 {
+    font-size: clamp(44px, 8vw, 96px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    margin-bottom: 22px;
+  }
+  h1 .accent { color: var(--accent); }
+  .tagline {
+    color: var(--muted);
+    font-size: 18px;
+    max-width: 560px;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 32px 96px;
+  }
+  .section-label {
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 22px;
+  }
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.25s ease, border-color 0.25s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,45,111,0.45);
+  }
+  .cover {
+    aspect-ratio: 4 / 3;
+    background: #000;
+    overflow: hidden;
+  }
+  .cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .meta {
+    padding: 18px 20px 22px;
+  }
+  .title {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .blurb {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    border: 1px solid rgba(0,229,255,0.3);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  footer {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 32px 48px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  @media (max-width: 540px) {
+    header { padding: 56px 20px 32px; }
+    main { padding: 20px 20px 64px; }
+    footer { padding: 20px 20px 32px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Portfolio</div>
+  <h1>MR<span class="accent">.</span></h1>
+  <p class="tagline">A growing collection of visual experiments, series, and side projects.</p>
+</header>
+
+<main>
+  <div class="section-label">Projects</div>
+  <section class="grid" id="grid"></section>
+</main>
+
+<footer>
+  <span>&copy; 2026 MR</span>
+  <span>Soft Series &middot; Volume 01</span>
+</footer>
+
+<script>
+  // To add a new project later: drop a folder in /projects/<slug>/ with an index.html,
+  // then add one entry below. That's it.
+  const projects = [
+    {
+      slug: "soft-series",
+      title: "Soft Series — Menu 2087",
+      blurb: "Seven fast-food artifacts from a future that never quite happened.",
+      tag: "Animation",
+      cover: "projects/soft-series/01_QUANTUMBURGER.gif",
+      href: "projects/soft-series/"
+    }
+    // Example for next time:
+    // {
+    //   slug: "new-project",
+    //   title: "New Project",
+    //   blurb: "Short description.",
+    //   tag: "Type",
+    //   cover: "projects/new-project/cover.jpg",
+    //   href: "projects/new-project/"
+    // }
+  ];
+  const grid = document.getElementById("grid");
+  grid.innerHTML = projects.map(p => `
+    <a class="card" href="${p.href}">
+      <div class="cover"><img src="${p.cover}" alt="${p.title}" loading="lazy"></div>
+      <div class="meta">
+        <div class="title">${p.title}</div>
+        <div class="blurb">${p.blurb}</div>
+        <span class="tag">${p.tag}</span>
+      </div>
+    </a>
+  `).join("");
+</script>
+</body>
+</html>
