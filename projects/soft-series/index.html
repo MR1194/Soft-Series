@@ -117,18 +117,41 @@
     font-size: 13px;
     border-top: 1px solid var(--border);
   }
+  .sound-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    background: rgba(17,17,26,0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .sound-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .sound-toggle.on { color: var(--accent-2); border-color: rgba(0,229,255,0.45); }
   @media (max-width: 540px) {
     header { padding: 40px 20px 28px; }
     main { padding: 28px 20px 64px; }
     footer { padding: 20px 20px 32px; }
+    .sound-toggle { top: 12px; right: 12px; font-size: 11px; padding: 8px 12px; }
   }
 </style>
 </head>
 <body>
+<button class="sound-toggle" id="soundToggle" aria-pressed="false">Sound: Off</button>
 <header>
   <div class="eyebrow"><a href="../../" style="color:inherit;text-decoration:none;">&larr; All projects</a></div>
   <h1 style="margin-top:8px;">Soft <span class="accent">Series</span><br>Menu 2087</h1>
-  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Hover to feel them move.</p>
+  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Turn sound on, hover to feel them.</p>
 </header>
 
 <main>
@@ -141,17 +164,17 @@
 
 <script>
   const items = [
-    { n: "01", name: "QUANTUMBURGER",       file: "01_QUANTUMBURGER.gif" },
-    { n: "02", name: "NEONFRIES",           file: "02_NEONFRIES.gif" },
-    { n: "03", name: "PLASMACHEESESTICKS",  file: "03_PLASMACHEESESTICKS.gif" },
-    { n: "04", name: "NEURALPANCAKES",      file: "04_NEURALPANCAKES.gif" },
-    { n: "05", name: "CYBERSANDWICH",       file: "05_CYBERSANDWICH.gif" },
-    { n: "06", name: "CHROMECINNAMONROLL",  file: "06_CHROMECINNAMONROLL.gif" },
-    { n: "07", name: "HOLOSHAWERMA",        file: "07_HOLOSHAWERMA.gif" },
+    { n: "01", name: "QUANTUMBURGER",       file: "01_QUANTUMBURGER.gif",       sound: "burger" },
+    { n: "02", name: "NEONFRIES",           file: "02_NEONFRIES.gif",           sound: "fries" },
+    { n: "03", name: "PLASMACHEESESTICKS",  file: "03_PLASMACHEESESTICKS.gif",  sound: "cheese" },
+    { n: "04", name: "NEURALPANCAKES",      file: "04_NEURALPANCAKES.gif",      sound: "pancakes" },
+    { n: "05", name: "CYBERSANDWICH",       file: "05_CYBERSANDWICH.gif",       sound: "sandwich" },
+    { n: "06", name: "CHROMECINNAMONROLL",  file: "06_CHROMECINNAMONROLL.gif",  sound: "cinnamon" },
+    { n: "07", name: "HOLOSHAWERMA",        file: "07_HOLOSHAWERMA.gif",        sound: "shawerma" },
   ];
   const grid = document.getElementById("grid");
   grid.innerHTML = items.map(i => `
-    <article class="card">
+    <article class="card" data-sound="${i.sound}">
       <div class="thumb"><img src="${i.file}" alt="${i.name}" loading="lazy"></div>
       <div class="meta">
         <span class="name">${i.name}</span>
@@ -159,6 +182,183 @@
       </div>
     </article>
   `).join("");
+
+  // ===== Cyberpunk audio synthesis (Web Audio API, no files) =====
+  let audioCtx = null;
+  let masterGain = null;
+  let soundEnabled = false;
+  const lastPlay = {};
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.25;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  function env(node, t0, attack, decay, peak) {
+    node.gain.setValueAtTime(0, t0);
+    node.gain.linearRampToValueAtTime(peak, t0 + attack);
+    node.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+  }
+
+  function osc(type, freq, t0) {
+    const o = audioCtx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    return o;
+  }
+
+  function noise(duration) {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    return src;
+  }
+
+  const sounds = {
+    // QUANTUMBURGER — deep beefy sub-thump + low sizzle
+    burger() {
+      const t = audioCtx.currentTime;
+      const sub = osc('sine', 80, t);
+      sub.frequency.exponentialRampToValueAtTime(35, t + 0.3);
+      const subGain = audioCtx.createGain();
+      env(subGain, t, 0.005, 0.35, 0.9);
+      sub.connect(subGain).connect(masterGain);
+      sub.start(t); sub.stop(t + 0.4);
+
+      const n = noise(0.4);
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 350; lp.Q.value = 4;
+      const nGain = audioCtx.createGain();
+      env(nGain, t, 0.01, 0.3, 0.25);
+      n.connect(lp).connect(nGain).connect(masterGain);
+      n.start(t); n.stop(t + 0.4);
+    },
+    // NEONFRIES — fast crispy ascending zaps
+    fries() {
+      const t = audioCtx.currentTime;
+      const freqs = [900, 1200, 1500, 1800, 1400, 2100];
+      freqs.forEach((f, i) => {
+        const t0 = t + i * 0.045;
+        const o = osc('square', f, t0);
+        const lp = audioCtx.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.value = 3500;
+        const g = audioCtx.createGain();
+        env(g, t0, 0.002, 0.05, 0.18);
+        o.connect(lp).connect(g).connect(masterGain);
+        o.start(t0); o.stop(t0 + 0.07);
+      });
+    },
+    // PLASMACHEESESTICKS — stretchy melty wobble
+    cheese() {
+      const t = audioCtx.currentTime;
+      const carrier = osc('sine', 220, t);
+      carrier.frequency.linearRampToValueAtTime(310, t + 0.6);
+      const mod = osc('sine', 7, t);
+      const modGain = audioCtx.createGain();
+      modGain.gain.value = 60;
+      mod.connect(modGain).connect(carrier.frequency);
+      const g = audioCtx.createGain();
+      env(g, t, 0.04, 0.55, 0.6);
+      carrier.connect(g).connect(masterGain);
+      carrier.start(t); carrier.stop(t + 0.65);
+      mod.start(t); mod.stop(t + 0.65);
+    },
+    // NEURALPANCAKES — soft warm bell chime
+    pancakes() {
+      const t = audioCtx.currentTime;
+      [523.25, 783.99, 1046.5].forEach((f, i) => {
+        const o = osc('triangle', f, t);
+        const g = audioCtx.createGain();
+        env(g, t + i * 0.02, 0.01, 0.9 - i * 0.15, 0.4 - i * 0.08);
+        o.connect(g).connect(masterGain);
+        o.start(t + i * 0.02); o.stop(t + 1.0);
+      });
+    },
+    // CYBERSANDWICH — stacked chord stab
+    sandwich() {
+      const t = audioCtx.currentTime;
+      const chord = [196, 246.94, 293.66, 369.99]; // G minor 7 vibe
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = 6;
+      const g = audioCtx.createGain();
+      env(g, t, 0.005, 0.5, 0.5);
+      g.connect(masterGain);
+      lp.connect(g);
+      chord.forEach(f => {
+        const o = osc('sawtooth', f, t);
+        o.connect(lp);
+        o.start(t); o.stop(t + 0.55);
+      });
+    },
+    // CHROMECINNAMONROLL — swirling metallic ping with delay
+    cinnamon() {
+      const t = audioCtx.currentTime;
+      const o = osc('triangle', 880, t);
+      o.frequency.exponentialRampToValueAtTime(440, t + 0.5);
+      const g = audioCtx.createGain();
+      env(g, t, 0.005, 0.45, 0.5);
+      const delay = audioCtx.createDelay();
+      delay.delayTime.value = 0.13;
+      const feedback = audioCtx.createGain();
+      feedback.gain.value = 0.45;
+      o.connect(g).connect(masterGain);
+      g.connect(delay).connect(feedback).connect(delay);
+      delay.connect(masterGain);
+      o.start(t); o.stop(t + 0.55);
+    },
+    // HOLOSHAWERMA — rotating filter sweep on noise
+    shawerma() {
+      const t = audioCtx.currentTime;
+      const n = noise(0.8);
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.Q.value = 8;
+      bp.frequency.setValueAtTime(400, t);
+      bp.frequency.linearRampToValueAtTime(2200, t + 0.4);
+      bp.frequency.linearRampToValueAtTime(500, t + 0.8);
+      const g = audioCtx.createGain();
+      env(g, t, 0.05, 0.75, 0.55);
+      n.connect(bp).connect(g).connect(masterGain);
+      n.start(t); n.stop(t + 0.85);
+    },
+  };
+
+  function playSound(key) {
+    if (!soundEnabled || !audioCtx) return;
+    const now = performance.now();
+    if (lastPlay[key] && now - lastPlay[key] < 250) return; // debounce
+    lastPlay[key] = now;
+    try { sounds[key](); } catch (e) {}
+  }
+
+  // Wire up hover (desktop) + tap (mobile)
+  document.querySelectorAll('.card').forEach(card => {
+    const key = card.dataset.sound;
+    card.addEventListener('mouseenter', () => playSound(key));
+    card.addEventListener('touchstart', () => playSound(key), { passive: true });
+  });
+
+  // Sound toggle
+  const toggle = document.getElementById('soundToggle');
+  toggle.addEventListener('click', () => {
+    if (!soundEnabled) {
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      soundEnabled = true;
+      toggle.textContent = 'Sound: On';
+      toggle.classList.add('on');
+      toggle.setAttribute('aria-pressed', 'true');
+    } else {
+      soundEnabled = false;
+      toggle.textContent = 'Sound: Off';
+      toggle.classList.remove('on');
+      toggle.setAttribute('aria-pressed', 'false');
+    }
+  });
 </script>
 </body>
 </html>
