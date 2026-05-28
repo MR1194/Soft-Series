@@ -140,10 +140,109 @@
     flex-wrap: wrap;
     gap: 12px;
   }
+  .support-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .support-btn:hover { color: var(--accent); border-color: rgba(255,45,111,0.4); }
+  .support-panel {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 32px 32px;
+    border-top: 1px solid var(--border);
+  }
+  .support-panel[hidden] { display: none; }
+  .support-panel h3 {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .support-panel .lead {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .wallets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .wallets { grid-template-columns: 1fr; }
+  }
+  .support-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: center;
+  }
+  .address-block {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .address-label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .address-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .address-row code {
+    flex: 1;
+    color: var(--fg);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13px;
+    word-break: break-all;
+    line-height: 1.4;
+  }
+  .copy-btn {
+    background: var(--accent-2);
+    color: #0a0a0f;
+    border: none;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .copy-btn.copied { background: #4ade80; }
+  .qr-wrap {
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+  }
+  .qr-wrap img { display: block; width: 140px; height: 140px; }
+  @media (max-width: 600px) {
+    .support-grid { grid-template-columns: 1fr; }
+    .qr-wrap { justify-self: center; }
+  }
   @media (max-width: 540px) {
     header { padding: 56px 20px 32px; }
     main { padding: 20px 20px 64px; }
     footer { padding: 20px 20px 32px; }
+    .support-panel { padding: 20px 20px 28px; }
   }
 </style>
 </head>
@@ -158,6 +257,41 @@
   <div class="section-label">Projects</div>
   <section class="grid" id="grid"></section>
 </main>
+
+<section class="support-panel" id="supportPanel">
+  <h3>Support the Series</h3>
+  <p class="lead">If something here moved you, you can tip in stablecoin on either network.</p>
+  <div class="wallets">
+    <div class="wallet">
+      <div class="support-grid">
+        <div class="address-block">
+          <div class="address-label">USDC &middot; Arbitrum One</div>
+          <div class="address-row">
+            <code data-addr>0x9b5f88A66aE60a808581815E2e2A068b32E7F6fE</code>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="qr-wrap">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=0x9b5f88A66aE60a808581815E2e2A068b32E7F6fE" alt="USDC Arbitrum QR code">
+        </div>
+      </div>
+    </div>
+    <div class="wallet">
+      <div class="support-grid">
+        <div class="address-block">
+          <div class="address-label">USDT &middot; TON</div>
+          <div class="address-row">
+            <code data-addr>UQBoIUM2ESJaVz2C1x6njR5sdMaBd0C3LtusFsDOj6fu_rj5</code>
+            <button class="copy-btn">Copy</button>
+          </div>
+        </div>
+        <div class="qr-wrap">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=UQBoIUM2ESJaVz2C1x6njR5sdMaBd0C3LtusFsDOj6fu_rj5" alt="USDT TON QR code">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <footer>
   <span>&copy; 2026 MR</span>
@@ -197,6 +331,25 @@
       </div>
     </a>
   `).join("");
+
+  // Copy wallet addresses (one button per wallet)
+  document.querySelectorAll(".copy-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const code = btn.closest(".address-row").querySelector("[data-addr]");
+      const addr = code.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(addr);
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = "Copy";
+          btn.classList.remove("copied");
+        }, 1800);
+      } catch (e) {
+        btn.textContent = "Select & copy";
+      }
+    });
+  });
 </script>
 </body>
 </html>
