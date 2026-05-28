@@ -193,12 +193,14 @@
     padding: 14px 16px;
   }
   .address-label {
-    color: var(--muted);
-    font-size: 11px;
-    letter-spacing: 0.15em;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
   }
+  .label-usdc { color: #3B9CFF; }   /* USDC brand blue */
+  .label-usdt { color: #26A17B; }   /* USDT brand green */
   .address-row {
     display: flex;
     align-items: center;
@@ -265,7 +267,7 @@
     <div class="wallet">
       <div class="support-grid">
         <div class="address-block">
-          <div class="address-label">USDC &middot; Arbitrum One</div>
+          <div class="address-label label-usdc">USDC &middot; Arbitrum One</div>
           <div class="address-row">
             <code data-addr>0x9b5f88A66aE60a808581815E2e2A068b32E7F6fE</code>
             <button class="copy-btn">Copy</button>
@@ -279,7 +281,7 @@
     <div class="wallet">
       <div class="support-grid">
         <div class="address-block">
-          <div class="address-label">USDT &middot; TON</div>
+          <div class="address-label label-usdt">USDT &middot; TON</div>
           <div class="address-row">
             <code data-addr>UQBoIUM2ESJaVz2C1x6njR5sdMaBd0C3LtusFsDOj6fu_rj5</code>
             <button class="copy-btn">Copy</button>
