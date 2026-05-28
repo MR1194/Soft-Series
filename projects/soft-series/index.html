@@ -151,7 +151,7 @@
 <header>
   <div class="eyebrow"><a href="../../" style="color:inherit;text-decoration:none;">&larr; All projects</a></div>
   <h1 style="margin-top:8px;">Soft <span class="accent">Series</span><br>Menu 2087</h1>
-  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Turn sound on, hover to feel them.</p>
+  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Turn sound on for rain — hover a card for jazz.</p>
 </header>
 
 <main>
@@ -183,17 +183,19 @@
     </article>
   `).join("");
 
-  // ===== Cyberpunk audio synthesis (Web Audio API, no files) =====
+  // ===== Audio: rain (continuous, soft) + jazz (loops on first hover, louder) =====
   let audioCtx = null;
   let masterGain = null;
   let soundEnabled = false;
-  const lastPlay = {};
+
+  let rainActive = false, rainTimer = null, rainMasterGain = null;
+  let jazzActive = false, jazzTimer = null, jazzMasterGain = null;
 
   function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.25;
+    masterGain.gain.value = 0.3;
     masterGain.connect(audioCtx.destination);
   }
 
@@ -219,141 +221,189 @@
     return src;
   }
 
-  const sounds = {
-    // QUANTUMBURGER — deep beefy sub-thump + low sizzle
-    burger() {
-      const t = audioCtx.currentTime;
-      const sub = osc('sine', 80, t);
-      sub.frequency.exponentialRampToValueAtTime(35, t + 0.3);
-      const subGain = audioCtx.createGain();
-      env(subGain, t, 0.005, 0.35, 0.9);
-      sub.connect(subGain).connect(masterGain);
-      sub.start(t); sub.stop(t + 0.4);
-
-      const n = noise(0.4);
-      const lp = audioCtx.createBiquadFilter();
-      lp.type = 'lowpass'; lp.frequency.value = 350; lp.Q.value = 4;
-      const nGain = audioCtx.createGain();
-      env(nGain, t, 0.01, 0.3, 0.25);
-      n.connect(lp).connect(nGain).connect(masterGain);
-      n.start(t); n.stop(t + 0.4);
-    },
-    // NEONFRIES — fast crispy ascending zaps
-    fries() {
-      const t = audioCtx.currentTime;
-      const freqs = [900, 1200, 1500, 1800, 1400, 2100];
-      freqs.forEach((f, i) => {
-        const t0 = t + i * 0.045;
-        const o = osc('square', f, t0);
-        const lp = audioCtx.createBiquadFilter();
-        lp.type = 'lowpass'; lp.frequency.value = 3500;
-        const g = audioCtx.createGain();
-        env(g, t0, 0.002, 0.05, 0.18);
-        o.connect(lp).connect(g).connect(masterGain);
-        o.start(t0); o.stop(t0 + 0.07);
-      });
-    },
-    // PLASMACHEESESTICKS — stretchy melty wobble
-    cheese() {
-      const t = audioCtx.currentTime;
-      const carrier = osc('sine', 220, t);
-      carrier.frequency.linearRampToValueAtTime(310, t + 0.6);
-      const mod = osc('sine', 7, t);
-      const modGain = audioCtx.createGain();
-      modGain.gain.value = 60;
-      mod.connect(modGain).connect(carrier.frequency);
-      const g = audioCtx.createGain();
-      env(g, t, 0.04, 0.55, 0.6);
-      carrier.connect(g).connect(masterGain);
-      carrier.start(t); carrier.stop(t + 0.65);
-      mod.start(t); mod.stop(t + 0.65);
-    },
-    // NEURALPANCAKES — soft warm bell chime
-    pancakes() {
-      const t = audioCtx.currentTime;
-      [523.25, 783.99, 1046.5].forEach((f, i) => {
-        const o = osc('triangle', f, t);
-        const g = audioCtx.createGain();
-        env(g, t + i * 0.02, 0.01, 0.9 - i * 0.15, 0.4 - i * 0.08);
-        o.connect(g).connect(masterGain);
-        o.start(t + i * 0.02); o.stop(t + 1.0);
-      });
-    },
-    // CYBERSANDWICH — stacked chord stab
-    sandwich() {
-      const t = audioCtx.currentTime;
-      const chord = [196, 246.94, 293.66, 369.99]; // G minor 7 vibe
-      const lp = audioCtx.createBiquadFilter();
-      lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = 6;
-      const g = audioCtx.createGain();
-      env(g, t, 0.005, 0.5, 0.5);
-      g.connect(masterGain);
-      lp.connect(g);
-      chord.forEach(f => {
-        const o = osc('sawtooth', f, t);
-        o.connect(lp);
-        o.start(t); o.stop(t + 0.55);
-      });
-    },
-    // CHROMECINNAMONROLL — swirling metallic ping with delay
-    cinnamon() {
-      const t = audioCtx.currentTime;
-      const o = osc('triangle', 880, t);
-      o.frequency.exponentialRampToValueAtTime(440, t + 0.5);
-      const g = audioCtx.createGain();
-      env(g, t, 0.005, 0.45, 0.5);
-      const delay = audioCtx.createDelay();
-      delay.delayTime.value = 0.13;
-      const feedback = audioCtx.createGain();
-      feedback.gain.value = 0.45;
-      o.connect(g).connect(masterGain);
-      g.connect(delay).connect(feedback).connect(delay);
-      delay.connect(masterGain);
-      o.start(t); o.stop(t + 0.55);
-    },
-    // HOLOSHAWERMA — rotating filter sweep on noise
-    shawerma() {
-      const t = audioCtx.currentTime;
-      const n = noise(0.8);
-      const bp = audioCtx.createBiquadFilter();
-      bp.type = 'bandpass'; bp.Q.value = 8;
-      bp.frequency.setValueAtTime(400, t);
-      bp.frequency.linearRampToValueAtTime(2200, t + 0.4);
-      bp.frequency.linearRampToValueAtTime(500, t + 0.8);
-      const g = audioCtx.createGain();
-      env(g, t, 0.05, 0.75, 0.55);
-      n.connect(bp).connect(g).connect(masterGain);
-      n.start(t); n.stop(t + 0.85);
-    },
-  };
-
-  function playSound(key) {
-    if (!soundEnabled || !audioCtx) return;
-    const now = performance.now();
-    if (lastPlay[key] && now - lastPlay[key] < 250) return; // debounce
-    lastPlay[key] = now;
-    try { sounds[key](); } catch (e) {}
+  // === RAIN LOOP (warm rain, no thunder, starts when Sound is turned On) ===
+  function stopRainLoop() {
+    rainActive = false;
+    if (rainTimer) { clearTimeout(rainTimer); rainTimer = null; }
+    if (rainMasterGain) {
+      const g = rainMasterGain; rainMasterGain = null;
+      try {
+        g.gain.cancelScheduledValues(audioCtx.currentTime);
+        g.gain.setValueAtTime(g.gain.value, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+      } catch (e) {}
+      setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 400);
+    }
   }
 
-  // Wire up hover (desktop) + tap (mobile)
+  function scheduleRainSegment() {
+    if (!rainActive || !rainMasterGain) return;
+    const t = audioCtx.currentTime;
+    const dur = 6.0;
+    const out = rainMasterGain;
+
+    // Warm body (1.2 kHz bandpass)
+    const body = noise(dur);
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 0.8;
+    const bodyG = audioCtx.createGain();
+    bodyG.gain.setValueAtTime(0, t);
+    bodyG.gain.linearRampToValueAtTime(0.6, t + 0.4);
+    bodyG.gain.setValueAtTime(0.6, t + dur - 0.4);
+    bodyG.gain.linearRampToValueAtTime(0.001, t + dur);
+    body.connect(bp).connect(bodyG).connect(out);
+    body.start(t); body.stop(t + dur);
+
+    // Low-mid warmth
+    const low = noise(dur);
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 600;
+    const lowG = audioCtx.createGain();
+    lowG.gain.setValueAtTime(0, t);
+    lowG.gain.linearRampToValueAtTime(0.45, t + 0.4);
+    lowG.gain.setValueAtTime(0.45, t + dur - 0.4);
+    lowG.gain.linearRampToValueAtTime(0.001, t + dur);
+    low.connect(lp).connect(lowG).connect(out);
+    low.start(t); low.stop(t + dur);
+
+    // Soft high air
+    const hi = noise(dur);
+    const hp = audioCtx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 4500;
+    const hiG = audioCtx.createGain();
+    hiG.gain.setValueAtTime(0, t);
+    hiG.gain.linearRampToValueAtTime(0.13, t + 0.4);
+    hiG.gain.setValueAtTime(0.13, t + dur - 0.4);
+    hiG.gain.linearRampToValueAtTime(0.001, t + dur);
+    hi.connect(hp).connect(hiG).connect(out);
+    hi.start(t); hi.stop(t + dur);
+
+    // Pitter-patter drops
+    for (let i = 0; i < 70; i++) {
+      const dt = Math.random() * (dur - 0.1);
+      const drop = noise(0.035);
+      const dropHP = audioCtx.createBiquadFilter();
+      dropHP.type = 'highpass'; dropHP.frequency.value = 2000 + Math.random() * 2200;
+      const dropG = audioCtx.createGain();
+      env(dropG, t + dt, 0.001, 0.014, 0.16 + Math.random() * 0.14);
+      drop.connect(dropHP).connect(dropG).connect(out);
+      drop.start(t + dt); drop.stop(t + dt + 0.035);
+    }
+
+    rainTimer = setTimeout(scheduleRainSegment, (dur - 0.3) * 1000);
+  }
+
+  function startRainLoop() {
+    if (!soundEnabled || !audioCtx) return;
+    stopRainLoop();
+    rainActive = true;
+    rainMasterGain = audioCtx.createGain();
+    rainMasterGain.gain.value = 0.5; // rain sits underneath jazz
+    rainMasterGain.connect(masterGain);
+    scheduleRainSegment();
+  }
+
+  // === JAZZ LOOP (soft piano chords + walking bass, ii-V-iii-VI in C) ===
+  function pianoNote(freq, t, dur, gain, out) {
+    const o1 = audioCtx.createOscillator();
+    o1.type = 'sine'; o1.frequency.value = freq;
+    const o2 = audioCtx.createOscillator();
+    o2.type = 'triangle'; o2.frequency.value = freq * 2;
+    const g1 = audioCtx.createGain();
+    g1.gain.setValueAtTime(0, t);
+    g1.gain.linearRampToValueAtTime(gain, t + 0.008);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    const g2 = audioCtx.createGain();
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(gain * 0.22, t + 0.008);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.65);
+    o1.connect(g1).connect(out);
+    o2.connect(g2).connect(out);
+    o1.start(t); o1.stop(t + dur + 0.05);
+    o2.start(t); o2.stop(t + dur + 0.05);
+  }
+
+  function bassNote(freq, t, dur, gain, out) {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle'; o.frequency.value = freq;
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 700;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(lp).connect(g).connect(out);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  function stopJazzLoop() {
+    jazzActive = false;
+    if (jazzTimer) { clearTimeout(jazzTimer); jazzTimer = null; }
+    if (jazzMasterGain) {
+      const g = jazzMasterGain; jazzMasterGain = null;
+      try {
+        g.gain.cancelScheduledValues(audioCtx.currentTime);
+        g.gain.setValueAtTime(g.gain.value, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+      } catch (e) {}
+      setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 400);
+    }
+  }
+
+  function scheduleJazzBar() {
+    if (!jazzActive || !jazzMasterGain) return;
+    const t = audioCtx.currentTime;
+    const out = jazzMasterGain;
+    const beat = 0.75; // ~80 BPM
+
+    // Each chord lasts 2 beats; 4 chords = 8 beats = 6 s
+    const segments = [
+      { chord: [349.23, 440,    523.25, 659.25], bass: [146.83, 220   ] }, // Dm7
+      { chord: [349.23, 440,    493.88, 587.33], bass: [98,     146.83] }, // G7
+      { chord: [329.63, 392,    493.88, 587.33], bass: [130.81, 196   ] }, // Cmaj7
+      { chord: [392,    440,    554.37, 659.25], bass: [110,    164.81] }, // A7
+    ];
+
+    segments.forEach((seg, i) => {
+      const segT = t + i * 2 * beat;
+      const segDur = 2 * beat;
+      seg.chord.forEach(f => pianoNote(f, segT, segDur, 0.14, out));
+      seg.bass.forEach((bf, j) => bassNote(bf, segT + j * beat, beat * 0.9, 0.32, out));
+    });
+
+    jazzTimer = setTimeout(scheduleJazzBar, 8 * beat * 1000);
+  }
+
+  function startJazzLoop() {
+    if (!soundEnabled || !audioCtx || jazzActive) return; // don't restart if already playing
+    jazzActive = true;
+    jazzMasterGain = audioCtx.createGain();
+    jazzMasterGain.gain.value = 0.9; // louder than rain
+    jazzMasterGain.connect(masterGain);
+    scheduleJazzBar();
+  }
+
+  // Hover (desktop) or tap (mobile) any card → start jazz on top of rain
   document.querySelectorAll('.card').forEach(card => {
-    const key = card.dataset.sound;
-    card.addEventListener('mouseenter', () => playSound(key));
-    card.addEventListener('touchstart', () => playSound(key), { passive: true });
+    card.addEventListener('mouseenter', startJazzLoop);
+    card.addEventListener('touchstart', startJazzLoop, { passive: true });
   });
 
-  // Sound toggle
+  // Sound toggle: ON starts rain immediately + enables hover-triggered jazz; OFF stops both
   const toggle = document.getElementById('soundToggle');
   toggle.addEventListener('click', () => {
     if (!soundEnabled) {
       initAudio();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       soundEnabled = true;
+      startRainLoop();
       toggle.textContent = 'Sound: On';
       toggle.classList.add('on');
       toggle.setAttribute('aria-pressed', 'true');
     } else {
       soundEnabled = false;
+      stopRainLoop();
+      stopJazzLoop();
       toggle.textContent = 'Sound: Off';
       toggle.classList.remove('on');
       toggle.setAttribute('aria-pressed', 'false');
