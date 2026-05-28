@@ -151,7 +151,7 @@
 <header>
   <div class="eyebrow"><a href="../../" style="color:inherit;text-decoration:none;">&larr; All projects</a></div>
   <h1 style="margin-top:8px;">Soft <span class="accent">Series</span><br>Menu 2087</h1>
-  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Turn sound on for rain — hover a card for jazz.</p>
+  <p class="tagline">Seven fast-food artifacts from a future that never quite happened. Rain plays on its own — hover a card for jazz.</p>
 </header>
 
 <main>
@@ -239,7 +239,7 @@
   function scheduleRainSegment() {
     if (!rainActive || !rainMasterGain) return;
     const t = audioCtx.currentTime;
-    const dur = 6.0;
+    const dur = 30.0;
     const out = rainMasterGain;
 
     // Warm body (1.2 kHz bandpass)
@@ -278,8 +278,9 @@
     hi.connect(hp).connect(hiG).connect(out);
     hi.start(t); hi.stop(t + dur);
 
-    // Pitter-patter drops
-    for (let i = 0; i < 70; i++) {
+    // Pitter-patter drops (scaled to duration for even density)
+    const dropCount = Math.round(dur * 12);
+    for (let i = 0; i < dropCount; i++) {
       const dt = Math.random() * (dur - 0.1);
       const drop = noise(0.035);
       const dropHP = audioCtx.createBiquadFilter();
@@ -298,7 +299,7 @@
     stopRainLoop();
     rainActive = true;
     rainMasterGain = audioCtx.createGain();
-    rainMasterGain.gain.value = 0.5; // rain sits underneath jazz
+    rainMasterGain.gain.value = 0.32; // rain sits underneath jazz (quieter)
     rainMasterGain.connect(masterGain);
     scheduleRainSegment();
   }
@@ -383,32 +384,71 @@
     scheduleJazzBar();
   }
 
-  // Hover (desktop) or tap (mobile) any card → start jazz on top of rain
+  // Robust hover detection via document-wide mousemove (mouseleave can be flaky with hover-transforms)
+  let jazzIdleTimer = null;
+  const JAZZ_IDLE_MS = 3000;
+  function armJazzIdle() {
+    if (jazzIdleTimer) return; // already armed
+    jazzIdleTimer = setTimeout(() => {
+      stopJazzLoop();
+      jazzIdleTimer = null;
+    }, JAZZ_IDLE_MS);
+  }
+  function cancelJazzIdle() {
+    if (jazzIdleTimer) { clearTimeout(jazzIdleTimer); jazzIdleTimer = null; }
+  }
+  document.addEventListener('mousemove', (e) => {
+    const onCard = !!e.target.closest('.card');
+    if (onCard) {
+      cancelJazzIdle();
+      if (!jazzActive) startJazzLoop();
+    } else if (jazzActive) {
+      armJazzIdle();
+    }
+  });
+  // Mobile: tap a card to start jazz, then idle timer counts down from last tap
   document.querySelectorAll('.card').forEach(card => {
-    card.addEventListener('mouseenter', startJazzLoop);
-    card.addEventListener('touchstart', startJazzLoop, { passive: true });
+    card.addEventListener('touchstart', () => {
+      cancelJazzIdle();
+      startJazzLoop();
+      armJazzIdle();
+    }, { passive: true });
   });
 
   // Sound toggle: ON starts rain immediately + enables hover-triggered jazz; OFF stops both
   const toggle = document.getElementById('soundToggle');
+  function enableSound() {
+    if (soundEnabled) return;
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    soundEnabled = true;
+    startRainLoop();
+    toggle.textContent = 'Sound: On';
+    toggle.classList.add('on');
+    toggle.setAttribute('aria-pressed', 'true');
+  }
+  function disableSound() {
+    soundEnabled = false;
+    stopRainLoop();
+    stopJazzLoop();
+    toggle.textContent = 'Sound: Off';
+    toggle.classList.remove('on');
+    toggle.setAttribute('aria-pressed', 'false');
+  }
   toggle.addEventListener('click', () => {
-    if (!soundEnabled) {
-      initAudio();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      soundEnabled = true;
-      startRainLoop();
-      toggle.textContent = 'Sound: On';
-      toggle.classList.add('on');
-      toggle.setAttribute('aria-pressed', 'true');
-    } else {
-      soundEnabled = false;
-      stopRainLoop();
-      stopJazzLoop();
-      toggle.textContent = 'Sound: Off';
-      toggle.classList.remove('on');
-      toggle.setAttribute('aria-pressed', 'false');
-    }
+    soundEnabled ? disableSound() : enableSound();
   });
+
+  // Auto-start rain on first user interaction (browsers block audio before any gesture)
+  function autoStart() {
+    enableSound();
+    ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(evt =>
+      window.removeEventListener(evt, autoStart, { capture: true })
+    );
+  }
+  ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(evt =>
+    window.addEventListener(evt, autoStart, { capture: true, once: false })
+  );
 </script>
 </body>
 </html>
